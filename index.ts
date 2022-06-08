@@ -8,110 +8,118 @@
 // parameter when you first load the API. For example:
 // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
 
-function initMap(): void {
-  const map = new google.maps.Map(
-    document.getElementById("map") as HTMLElement,
-    {
-      center: { lat: 29.715, lng: -95.872 },
-      zoom: 13,
-      mapTypeControl: false,
-    }
-  );
-  const card = document.getElementById("pac-card") as HTMLElement;
-  const input = document.getElementById("pac-input") as HTMLInputElement;
-  const biasInputElement = document.getElementById(
-    "use-location-bias"
-  ) as HTMLInputElement;
-  const strictBoundsInputElement = document.getElementById(
-    "use-strict-bounds"
-  ) as HTMLInputElement;
-  const options = {
-    strictBounds: true,
-    types: ["address"],
+const myPolygons = [
+  {
+    scout: 'Carson Odell',
+    name: 'Yellow Area',
+    path: [
+      // You have to changes those values with lats and lngs of your polygon
+      { lng: -95.854375, lat: 29.69825 },
+      { lng: -95.852165, lat: 29.696712 },
+      { lng: -95.850282, lat: 29.698711 },
+      { lng: -95.850622, lat: 29.699618 },
+      { lng: -95.851221, lat: 29.700468 },
+    ],
+    geodesic: true,
+    strokeColor: '#FFd000',
+    strokeOpacity: 1.0,
+    strokeWeight: 4,
+    fillColor: '#FFd000',
+    fillOpacity: 0.35,
+  },
+  {
+    name: 'Blue Area',
+    path: [
+      // You have to changes those values with lats and lngs of your polygon
+      { lat: 11.0194794, lng: -74.8504209 },
+      { lat: 11.0131404, lng: -74.8276712 },
+      { lat: 10.9946794, lng: -74.8395515 },
+    ],
+    geodesic: true,
+    strokeColor: 'blue',
+    strokeOpacity: 1.0,
+    strokeWeight: 4,
+    fillColor: 'blue',
+    fillOpacity: 0.35,
+  },
+  {
+    name: 'Green Area',
+    path: [
+      // You have to changes those values with lats and lngs of your polygon
+      { lat: 10.9772761, lng: -74.8134354 },
+      { lat: 10.9933967, lng: -74.8183852 },
+      { lat: 10.987963, lng: -74.78883119 },
+    ],
+    geodesic: true,
+    strokeColor: 'green',
+    strokeOpacity: 1.0,
+    strokeWeight: 4,
+    fillColor: 'green',
+    fillOpacity: 0.35,
+  },
+];
+
+function initMap() {
+  let map;
+  let marker;
+
+  const createMap = ({ latitude, longitude, polygons, mapId, inputId }) => {
+    const center = new google.maps.LatLng(latitude, longitude);
+
+    map = new google.maps.Map(document.getElementById(mapId), {
+      center,
+      zoom: 14,
+      scaleControl: true,
+    });
+
+    marker = new google.maps.Marker({ position: center });
+
+    const createGooglePolygons = ({ name, scout, ...polygon }) => {
+      const newPolygon = new google.maps.Polygon(polygon);
+      newPolygon.setMap(map);
+
+      return { name, scout, polygon: newPolygon };
+    };
+
+    const googlePolygons = polygons.map(createGooglePolygons);
+
+    const input = document.getElementById(inputId);
+
+    const autocomplete = new google.maps.places.Autocomplete(input);
+
+    const onAutocompleteChange = () => {
+      const place = autocomplete.getPlace();
+      const location = place.geometry.location;
+      const poly = google.maps.geometry.poly;
+
+      if (!place.geometry)
+        return alert("Autocomplete's returned place contains no geometry");
+
+      marker.setPosition(location);
+      marker.setMap(map);
+
+      const isLocationInsidePolygon = ({ polygon }) =>
+        poly.containsLocation(location, polygon);
+
+      const matchedPolygon = googlePolygons.find(isLocationInsidePolygon);
+
+      if (!matchedPolygon)
+        return alert('The address does not match any valid area');
+
+      alert(`The ${matchedPolygon.scout} contains the address`);
+      console.log('here is the poly ', matchedPolygon);
+    };
+
+    autocomplete.addListener('place_changed', onAutocompleteChange);
   };
 
-  map.controls[google.maps.ControlPosition.TOP_LEFT].push(card);
-
-  const autocomplete = new google.maps.places.Autocomplete(input, options);
-
-  // Bind the map's bounds (viewport) property to the autocomplete object,
-  // so that the autocomplete requests use the current map bounds for the
-  // bounds option in the request.
-  autocomplete.bindTo("bounds", map);
-
-  const infowindow = new google.maps.InfoWindow();
-  const infowindowContent = document.getElementById(
-    "infowindow-content"
-  ) as HTMLElement;
-
-  infowindow.setContent(infowindowContent);
-
-
-  const flightPlanCoordinates = [
-    {lng: -95.854375, lat: 29.698250},
-    {lng: -95.852165, lat: 29.696712},
-    {lng: -95.850282, lat: 29.698711},
-    {lng: -95.850622, lat: 29.699618},
-    {lng: -95.851221, lat: 29.700468},
-  ];
-  const flightPath = new google.maps.Polygon({
-    paths: flightPlanCoordinates,
-    strokeColor: "#FF0000",
-    strokeOpacity: 0.8,
-    strokeWeight: 2,
-    fillColor: "#FF0000",
-    fillOpacity: 0.3,
+  createMap({
+    latitude: 29.715, //Put your origin latitude here
+    longitude: -95.872, //Put your origin longitude here
+    polygons: myPolygons,
+    mapId: 'js-map',
+    inputId: 'js-input',
   });
-
-  flightPath.setMap(map);
-
-  // const ctaLayer = new google.maps.KmlLayer({
-  //   url: "https://raw.githubusercontent.com/jeremyodell/flag-route/main/ccrFlagRoute.kml",
-  //   map: map,
-  // });
-
-  
-
-  autocomplete.addListener("place_changed", () => {
-    infowindow.close();
-
-    const place = autocomplete.getPlace();
-    const location = place.geometry;
-    console.log('here is the location ', location);
-    const poly = google.maps.geometry.poly;
-    console.log('here is the place', place);
-
-    if (!place.geometry || !place.geometry.location) {
-      // User entered the name of a Place that was not suggested and
-      // pressed the Enter key, or the Place Details request failed.
-      window.alert("No details available for input: '" + place.name + "'");
-      return;
-    }
-    google.maps.geometry.poly.containsLocation(location.location, flightPath);
-
-    // If the place has a geometry, then present it on a map.
-    if (place.geometry.viewport) {
-      map.fitBounds(place.geometry.viewport);
-    } else {
-      map.setCenter(place.geometry.location);
-      map.setZoom(1);
-    }
-
-    // marker.setPosition(place.geometry.location);
-    // marker.setVisible(true);
-
-    infowindowContent.children["place-name"].textContent = place.name;
-    infowindowContent.children["place-address"].textContent =
-      place.formatted_address;
-    //infowindow.open(map, marker);
-  });
-
 }
 
-declare global {
-  interface Window {
-    initMap: () => void;
-  }
-}
-window.initMap = initMap;
-export {};
+window.onload = initMap;
